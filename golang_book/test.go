@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"crypto/sha256"
+	"crypto/sha512"
 )
 
 //var d []interface{}
@@ -89,7 +91,49 @@ func puller(c <-chan int) chan int {
 	return out
 }
 
+func shaResult() {
+	//var b []byte
+	var c1, c2 interface{}
+
+	params := os.Args[1:]
+	for _, p := range params {
+		if p == "SHA384" {
+			c1 = sha512.Sum384([]byte("x"))
+			c2 = sha512.Sum384([]byte("X"))
+			fmt.Printf("sha384 %T %[1]x\n", c1)
+			fmt.Printf("sha384 %T %[1]x\n", c2)
+			//fmt.Printf("diff %T %[1]x\n", b)
+		} else if p == "SHA512" {
+			c1 = sha512.Sum512([]byte("x"))
+			c2 = sha512.Sum384([]byte("X"))
+			fmt.Printf("sha512 %T %[1]x\n", c1)
+			fmt.Printf("sha512 %T %[1]x\n", c2)
+		} else {
+			c1 = sha256.Sum256([]byte("x"))
+			c2 = sha512.Sum384([]byte("X"))
+			fmt.Printf("sha512 %T %[1]x\n", c1)
+			fmt.Printf("sha512 %T %[1]x\n", c2)
+		}
+	}
+}
+
 func main() {
+
+	ages := map[string]int{
+		"alice":31,
+		"charlie": 16,
+		"bob": 23,
+	}
+	names := make([]string, 0, len(ages))
+	for name := range ages {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	for _, name := range names {
+		fmt.Printf("%s\t%d\n", name, ages[name])
+	}
+
+	shaResult()
 
 	c := make(chan int)
 	done := make(chan bool)
@@ -337,7 +381,7 @@ func factorial(n int) int {
 	if n == 0 {
 		return 1
 	}
-	return n * factorial(n-1)
+	return n * factorial(n - 1)
 }
 
 func my_2(numbers ...int) int {

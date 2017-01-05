@@ -45,3 +45,4 @@ func countLines(f *os.File, counts map[string]int) {
 		counts[f.Name()+"-"+input.Text()]++
 	}
 }
+
