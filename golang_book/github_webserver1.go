@@ -13,12 +13,14 @@ import (
 )
 
 const IssuesURL = "https://api.github.com/search/issues"
+const MilestoneURL = "https://api.github.com/repos/golang/go/milestones"
 
 var issueList = template.Must(template.New("issueslist").
 	Funcs(template.FuncMap{"daysAgo": daysAgo}).
 	Parse(`
 <h1>{{.TotalCount}} issues</h1>
 <h3><a href='/users'>Users List</a></h3>
+<h3><a href='/milestones'>Milestones</a></h3>
 <table>
 <tr style='text-align: left'>
   <th>#</th>
@@ -26,6 +28,7 @@ var issueList = template.Must(template.New("issueslist").
   <th>Days ago</th>
   <th>User</th>
   <th>Title</th>
+  <th>Milestone</th>
 </tr>
 {{range .Items}}
 <tr>
@@ -34,6 +37,7 @@ var issueList = template.Must(template.New("issueslist").
   <td>{{.CreatedAt | daysAgo}}</td>
   <td><a href='{{.User.HTMLURL}}'>{{.User.Login}}</a></td>
   <td><a href='{{.HTMLURL}}'>{{.Title}}</a></td>
+  <td>{{.Milestone.Title}}</td>
 </tr>
 {{end}}
 </table>
@@ -42,6 +46,7 @@ var issueList = template.Must(template.New("issueslist").
 var usersList = template.Must(template.New("users").Parse(`
 <h1>{{.TotalCount}} Users</h1>
 <h3><a href='/reports'>Reports</a></h3>
+<h3><a href='/milestones'>Milestones</a></h3>
 <table>
 <tr style='text-align: left'>
   <th>User</th>
@@ -51,6 +56,28 @@ var usersList = template.Must(template.New("users").Parse(`
 <tr>
   <td>{{.User.Login}}</td>
   <td><a href='{{.User.HTMLURL}}'>{{.User.HTMLURL}}</a></td>
+</tr>
+{{end}}
+</table>
+`))
+
+var milesList = template.Must(template.New("milestones").Parse(`
+<h1>Milestones List</h1>
+<h3><a href='/reports'>Reports</a></h3>
+<h3><a href='/users'>Users</a></h3>
+<table>
+<tr style='text-align: left'>
+  <th>Title</th>
+  <th>Description</th>
+  <th>URL</th>
+  <th>Creator</th>
+</tr>
+{{range .Items}}
+<tr>
+  <td>{{.Title}}</td>
+  <td>{{.Dewcription}}</td>
+  <td><a href='{{.HTMLURL}}'>{{.HTMLURL}}</a></td>
+  <td>{{.Creator.Login}}</td>
 </tr>
 {{end}}
 </table>
@@ -69,6 +96,7 @@ type Issue struct {
 	User      *User
 	CreatedAt time.Time `json:"created_at"`
 	Body      string    // in Markdown format
+	Milestone *Milestones
 }
 
 type User struct {
@@ -76,7 +104,27 @@ type User struct {
 	HTMLURL string `json:"html_url"`
 }
 
-var Result *IssuesSearchResult
+type MilesSearchResult struct {
+	MilesItem []*Milestones
+}
+
+type Milestones struct {
+	URL         string
+	HTMLURL     string `json:"html_url"`
+	Number      int
+	Title       string
+	Description string
+	Creator     *Creator
+	CreatedAt   time.Time `json:"created_at"`
+}
+
+type Creator struct {
+	Login   string
+	HTMLURL string `json:"html_url"`
+}
+
+var IssueRes *IssuesSearchResult
+var MilestoneRes *MilesSearchResult
 
 func init() {
 	var args []string
@@ -88,8 +136,34 @@ func init() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	Result = res
+	IssueRes = res
+
+	//res2, err := SearchMilestones()
+	//if err != nil {
+	//	log.Fatal(err)
+	//}
+	//MilestoneRes = res2
+
 	log.Println("Data from github was retrieved successfully")
+}
+
+func SearchMilestones() (*MilesSearchResult, error) {
+	//q := url.QueryEscape(strings.Join(terms, " "))
+	resp, err := http.Get(MilestoneURL) //+ "?q=" + q)
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		resp.Body.Close()
+		return nil, fmt.Errorf("search query failed: %s", resp.Status)
+	}
+	var result MilesSearchResult
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		resp.Body.Close()
+		return nil, err
+	}
+	resp.Body.Close()
+	return &result, nil
 }
 
 func SearchIssues(terms []string) (*IssuesSearchResult, error) {
@@ -133,17 +207,19 @@ func daysAgo(t time.Time) int {
 }
 
 func reports(w http.ResponseWriter, r *http.Request) {
-	if err := issueList.Execute(w, Result); err != nil {
+	if err := issueList.Execute(w, IssueRes); err != nil {
 		log.Fatal(err)
 	}
 }
 
 func milestones(w http.ResponseWriter, r *http.Request) {
-
+	if err := milesList.Execute(w, MilestoneRes); err != nil {
+		log.Fatal(err)
+	}
 }
 
 func users(w http.ResponseWriter, r *http.Request) {
-	if err := usersList.Execute(w, Result); err != nil {
+	if err := usersList.Execute(w, IssueRes); err != nil {
 		log.Fatal(err)
 	}
 }
