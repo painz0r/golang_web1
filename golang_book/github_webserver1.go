@@ -67,15 +67,15 @@ var milesList = template.Must(template.New("milestones").Parse(`
 <h3><a href='/users'>Users</a></h3>
 <table>
 <tr style='text-align: left'>
-  <th>Title</th>
+  <th>Milestone</th>
   <th>Description</th>
   <th>URL</th>
   <th>Creator</th>
 </tr>
-{{range .Items}}
+{{range .}}
 <tr>
   <td>{{.Title}}</td>
-  <td>{{.Dewcription}}</td>
+  <td>{{.Description}}</td>
   <td><a href='{{.HTMLURL}}'>{{.HTMLURL}}</a></td>
   <td>{{.Creator.Login}}</td>
 </tr>
@@ -104,10 +104,6 @@ type User struct {
 	HTMLURL string `json:"html_url"`
 }
 
-type MilesSearchResult struct {
-	MilesItem []*Milestones
-}
-
 type Milestones struct {
 	URL         string
 	HTMLURL     string `json:"html_url"`
@@ -124,7 +120,7 @@ type Creator struct {
 }
 
 var IssueRes *IssuesSearchResult
-var MilestoneRes *MilesSearchResult
+var MilestoneRes *[]Milestones
 
 func init() {
 	var args []string
@@ -138,18 +134,17 @@ func init() {
 	}
 	IssueRes = res
 
-	//res2, err := SearchMilestones()
-	//if err != nil {
-	//	log.Fatal(err)
-	//}
-	//MilestoneRes = res2
+	res2, err := SearchMilestones()
+	if err != nil {
+		log.Fatal(err)
+	}
+	MilestoneRes = res2
 
 	log.Println("Data from github was retrieved successfully")
 }
 
-func SearchMilestones() (*MilesSearchResult, error) {
-	//q := url.QueryEscape(strings.Join(terms, " "))
-	resp, err := http.Get(MilestoneURL) //+ "?q=" + q)
+func SearchMilestones() (*[]Milestones, error) {
+	resp, err := http.Get(MilestoneURL)
 	if err != nil {
 		return nil, err
 	}
@@ -157,7 +152,7 @@ func SearchMilestones() (*MilesSearchResult, error) {
 		resp.Body.Close()
 		return nil, fmt.Errorf("search query failed: %s", resp.Status)
 	}
-	var result MilesSearchResult
+	var result []Milestones
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		resp.Body.Close()
 		return nil, err
