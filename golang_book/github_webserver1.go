@@ -123,23 +123,30 @@ var IssueRes *IssuesSearchResult
 var MilestoneRes *[]Milestones
 
 func init() {
-	var args []string
-	args = os.Args[1:]
-	if len(args) == 0 {
-		args = append(args, "repo:golang/go is:open json decoder")
-	}
-	res, err := SearchIssues(args)
-	if err != nil {
-		log.Fatal(err)
-	}
-	IssueRes = res
-
-	res2, err := SearchMilestones()
-	if err != nil {
-		log.Fatal(err)
-	}
-	MilestoneRes = res2
-
+	ch := make(chan bool)
+	go func() {
+		var args []string
+		args = os.Args[1:]
+		if len(args) == 0 {
+			args = append(args, "repo:golang/go is:open json decoder")
+		}
+		res, err := SearchIssues(args)
+		if err != nil {
+			log.Fatal(err)
+		}
+		IssueRes = res
+		ch <- true
+	}()
+	go func() {
+		res, err := SearchMilestones()
+		if err != nil {
+			log.Fatal(err)
+		}
+		MilestoneRes = res
+		ch <- true
+	}()
+	<-ch
+	<-ch
 	log.Println("Data from github was retrieved successfully")
 }
 
