@@ -88,9 +88,9 @@ func startElement(n *html.Node) {
 			depth++
 		}
 	} else if n.Type == html.CommentNode {
-		fmt.Printf("%s\n", n.Type)
-		//} else if n.Type == html.TextNode {
-		//	fmt.Printf("%v\n", n.Type)
+		fmt.Printf("%s\n", n.Data)
+	} else if n.Type == html.TextNode {
+		fmt.Printf("%v\n", n.Data)
 	}
 
 }
