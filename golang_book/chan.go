@@ -1,8 +1,8 @@
 package main
 
 import (
-	"time"
 	"log"
+	"time"
 	//"fmt"
 	//"sort"
 	//"sort"
@@ -134,11 +134,11 @@ func timeTrack(start time.Time, name string) {
 func testEq(a, b []int) bool {
 
 	if a == nil && b == nil {
-		return true;
+		return true
 	}
 
 	if a == nil || b == nil {
-		return false;
+		return false
 	}
 
 	if len(a) != len(b) {
@@ -158,14 +158,14 @@ func factorialChan(n int) int {
 	if n == 0 {
 		return 1
 	}
-	return n * factorialChan(n - 1)
+	return n * factorialChan(n-1)
 }
 
 var (
-	Web1 = fakeSearch("web1")
+	Web1   = fakeSearch("web1")
 	Image1 = fakeSearch("image1")
 	Video1 = fakeSearch("video1")
-	Web2 = fakeSearch("web2")
+	Web2   = fakeSearch("web2")
 	Image2 = fakeSearch("image2")
 	Video2 = fakeSearch("video2")
 )
@@ -174,10 +174,10 @@ type Result string
 type Search func(query string) Result
 
 func fakeSearch(kind ...string) Search {
-		return func(query string) Result {
-			time.Sleep(time.Duration(rand.Intn(100)) * time.Millisecond)
-			return Result(fmt.Sprintf("%s result for %q\n", kind, query))
-		}
+	return func(query string) Result {
+		time.Sleep(time.Duration(rand.Intn(100)) * time.Millisecond)
+		return Result(fmt.Sprintf("%s result for %q\n", kind, query))
+	}
 }
 
 func run() {
@@ -191,6 +191,7 @@ func run() {
 	fmt.Println(results)
 	fmt.Println(elapsed)
 }
+
 // Google search 1.0 - no concurrency
 //func Google(query string) (results []Result) {
 //	results = append(results, Web(query))
@@ -259,7 +260,7 @@ func First(query string, replicas ...Search) Result {
 
 // Google search 3.0
 func Google(query string) (results []Result) {
-	c := make(chan Result,3)
+	c := make(chan Result, 3)
 
 	go func() {
 		c <- First(query, Web1, Web2)
@@ -283,17 +284,19 @@ func Google(query string) (results []Result) {
 	return
 }
 
-type Conn struct{
-	name string
+type Conn struct {
+	name     string
 	waitTime time.Duration
 }
-var c1 = Conn{name:"req1", waitTime:time.Second}
-var c2 = Conn{name:"req2", waitTime:time.Millisecond}
 
-var conns = []Conn{c1, c2}
+var (
+	c1    = Conn{name: "req1", waitTime: time.Second}
+	c2    = Conn{name: "req2", waitTime: time.Millisecond}
+	conns = []Conn{c1, c2}
+)
 
 func Query(conns []Conn, query string) string {
-	ch := make(chan string, len(conns))  // buffered
+	ch := make(chan string, len(conns)) // buffered
 	for _, conn := range conns {
 		go func(c Conn) {
 			ch <- c.DoQuery(query, c.name, c.waitTime)
@@ -302,7 +305,7 @@ func Query(conns []Conn, query string) string {
 	return <-ch
 }
 
-func (c Conn) DoQuery(query string, connName string, waitTime time.Duration) string{
+func (c Conn) DoQuery(query string, connName string, waitTime time.Duration) string {
 	time.Sleep(waitTime)
 	return fmt.Sprintln("Returning search from " + query + " " + connName)
 }
