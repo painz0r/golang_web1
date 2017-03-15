@@ -17,13 +17,16 @@ import (
 
 //!+broadcaster
 type client chan string // an outgoing message channel
-
+type clientAndName struct {
+	client
+	name string
+}
 var (
-	entering     = make(chan client)
-	leaving      = make(chan client)
+	entering     = make(chan clientAndName)
+	leaving      = make(chan clientAndName)
 	messages     = make(chan string) // all incoming client messages
-	enteringName = make(chan string)
-	leavingName  = make(chan string)
+	//enteringName = make(chan string)
+	//leavingName  = make(chan string)
 )
 
 func parseName(s string) string {
@@ -44,14 +47,16 @@ func broadcaster(clientNames map[string]bool) {
 			}
 
 		case cli := <-entering:
-			clients[cli] = true
-		case name := <-enteringName:
-			clientNames[name] = true
+			clients[cli.client] = true
+			clientNames[cli.name] = true
+		//case name := <-enteringName:
+		//	clientNames[name] = true
 		case cli := <-leaving:
-			delete(clients, cli)
-			close(cli)
-		case name := <-leavingName:
-			delete(clientNames, name)
+			delete(clients, cli.client)
+			delete(clientNames, cli.name)
+			close(cli.client)
+		//case name := <-leavingName:
+		//	delete(clientNames, name)
 
 		}
 	}
@@ -78,21 +83,21 @@ func handleConn(conn net.Conn, clientNames map[string]bool) {
 		}
 	}
 	messages <- name + " has arrived"
-	entering <- ch
-	enteringName <- name
+	entering <- clientAndName{ch,name}
+	//enteringName <- name
 	input := bufio.NewScanner(conn)
 	for input.Scan() {
 		messages <- name + "_(" + who + ")" + ": " + input.Text()
 	}
 	// NOTE: ignoring potential errors from input.Err()
 
-	leaving <- ch
+	leaving <- clientAndName{ch, name}
 	messages <- name + " has left"
-	leavingName <- name
+	//leavingName <- name
 	conn.Close()
 }
 
-func clientWriter(conn net.Conn, ch <-chan string) {
+func clientWriter(conn net.Conn, ch chan string) {
 	for msg := range ch {
 		fmt.Fprintln(conn, msg) // NOTE: ignoring network errors
 	}
