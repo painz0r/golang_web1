@@ -1,10 +1,3 @@
-// Copyright © 2016 Alan A. A. Donovan & Brian W. Kernighan.
-// License: https://creativecommons.org/licenses/by-nc-sa/4.0/
-
-// See page 254.
-//!+
-
-// Chat is a server that lets clients chat with each other.
 package main
 
 import (
@@ -13,6 +6,7 @@ import (
 	"log"
 	"net"
 	"strings"
+	"time"
 )
 
 //!+broadcaster
@@ -21,19 +15,14 @@ type clientAndName struct {
 	client
 	name string
 }
+
 var (
-	entering     = make(chan clientAndName)
-	leaving      = make(chan clientAndName)
-	messages     = make(chan string) // all incoming client messages
+	entering = make(chan clientAndName)
+	leaving  = make(chan clientAndName)
+	messages = make(chan string, 5) // all incoming client messages
 	//enteringName = make(chan string)
 	//leavingName  = make(chan string)
 )
-
-func parseName(s string) string {
-	var name string
-	name = strings.Trim(s, "You are ")
-	return name
-}
 
 func broadcaster(clientNames map[string]bool) {
 	clients := make(map[client]bool) // all connected clients
@@ -55,9 +44,25 @@ func broadcaster(clientNames map[string]bool) {
 			delete(clients, cli.client)
 			delete(clientNames, cli.name)
 			close(cli.client)
-		//case name := <-leavingName:
-		//	delete(clientNames, name)
+			//case name := <-leavingName:
+			//	delete(clientNames, name)
 
+		}
+	}
+}
+
+func idleCheck(conn net.Conn, out *chan bool, timeout *<-chan time.Time) {
+	for {
+		select {
+		case <-*out:
+			fmt.Println("hello from inside")
+			*timeout = time.After(10 * time.Minute)
+		case <-*timeout:
+			fmt.Println("hello from timeout")
+			fmt.Fprintln(conn, "\t", strings.ToUpper("GoodBye, you've been too idle"))
+			conn.Close()
+			return
+		default:
 		}
 	}
 }
@@ -65,9 +70,14 @@ func broadcaster(clientNames map[string]bool) {
 //!-broadcaster
 
 //!+handleConn
-func handleConn(conn net.Conn, clientNames map[string]bool) {
+func handleConn(conn net.Conn, clientNames map[string]bool, out *chan bool, timeout *<-chan time.Time) {
 	var name string
 	ch := make(chan string) // outgoing client messages
+
+	go func() {
+		*out <- true
+	}()
+	go idleCheck(conn, out, timeout)
 	go clientWriter(conn, ch)
 
 	who := conn.RemoteAddr().String()
@@ -83,11 +93,12 @@ func handleConn(conn net.Conn, clientNames map[string]bool) {
 		}
 	}
 	messages <- name + " has arrived"
-	entering <- clientAndName{ch,name}
+	entering <- clientAndName{ch, name}
 	//enteringName <- name
 	input := bufio.NewScanner(conn)
 	for input.Scan() {
 		messages <- name + "_(" + who + ")" + ": " + input.Text()
+		*out <- true
 	}
 	// NOTE: ignoring potential errors from input.Err()
 
@@ -114,13 +125,18 @@ func main() {
 	}
 
 	go broadcaster(clientNames)
+
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
 			log.Print(err)
 			continue
 		}
-		go handleConn(conn, clientNames)
+		go func() {
+			out := make(chan bool)
+			timeout := make(<-chan time.Time)
+			handleConn(conn, clientNames, &out, &timeout)
+		}()
 	}
 }
 
