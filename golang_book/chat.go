@@ -60,7 +60,7 @@ func idleCheck(conn net.Conn, out *chan bool, timeout *<-chan time.Time) {
 		select {
 		case <-*out:
 			fmt.Println("hello from inside")
-			*timeout = time.After(10 * time.Minute)
+			*timeout = time.NewTimer(10 * time.Minute).C
 		case <-*timeout:
 			fmt.Println("hello from timeout")
 			fmt.Fprintln(conn, "\t", strings.ToUpper("GoodBye, you've been too idle"))
@@ -109,6 +109,7 @@ func handleConn(conn net.Conn, clientNames map[string]bool, out *chan bool, time
 	leaving <- clientAndName{ch, name}
 	messages <- name + " has left"
 	//leavingName <- name
+	*timeout = time.NewTimer(1 * time.Second).C
 	conn.Close()
 }
 
