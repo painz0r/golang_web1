@@ -32,7 +32,11 @@ func broadcaster(clientNames map[string]bool) {
 			// Broadcast incoming message to all
 			// clients' outgoing message channels.
 			for cli := range clients {
-				cli <- msg
+				select {
+				case cli <- msg:
+				default:
+					fmt.Println("The message was dropped")
+				}
 			}
 
 		case cli := <-entering:
