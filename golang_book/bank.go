@@ -16,13 +16,14 @@ func Deposit(amount int) {
 	deposits <- amount
 	fmt.Println("depositing ", amount)
 }
-func Balance() string {
-	return fmt.Sprintln("balance is: ", <-balances)
+func Balance() {
+	fmt.Println("balance is: ", <-balances)
 }
 
 func WithdrawFunc(amount int) bool {
-	withdrawCommand <- WithD{amount,withdrawRes}
-
+	fmt.Println("trying to withdraw:", amount)
+	request := WithD{amount,withdrawRes}
+	withdrawCommand <- request
 	if <-withdrawRes {
 		fmt.Println("withdrawl was successful")
 		return true
@@ -54,8 +55,11 @@ func init() {
 }
 
 func main() {
+	Balance()
 	Deposit(100)
 	Balance()
 	WithdrawFunc(50)
+	Balance()
 	WithdrawFunc(51)
+	Balance()
 }
